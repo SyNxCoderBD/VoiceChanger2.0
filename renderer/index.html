@@ -55,6 +55,21 @@
           </div>
         </div>
 
+        <div class="transmit-bar">
+          <label class="device-field talk-mode-field">
+            <span>Voice activation</span>
+            <select id="talk-mode">
+              <option value="toggle">Click to toggle</option>
+              <option value="ptt">Push to talk (hold)</option>
+            </select>
+          </label>
+          <button class="talk-button" id="talk-button" type="button" aria-pressed="false" disabled>
+            <span class="talk-light" aria-hidden="true"></span>
+            <span id="talk-button-label">Start voice first</span>
+          </button>
+          <span class="talk-help" id="talk-help">Choose a mode, then start voice.</span>
+        </div>
+
         <div class="route-note" id="route-note" role="status">
           <span class="route-note-mark" aria-hidden="true">!</span>
           <span>For calls, send audio to <strong>CABLE Input</strong>, then select <strong>CABLE Output</strong> as your microphone in the call app.</span>
@@ -80,6 +95,19 @@
           </div>
           <button class="button button-quiet" id="reset-button" type="button">Reset</button>
         </div>
+        <label class="template-field">
+          <span>Effect template</span>
+          <select id="template-select">
+            <option value="custom">Manual settings</option>
+            <option value="radio">Radio</option>
+            <option value="walkie">Walkie-talkie</option>
+            <option value="loud">Very loud</option>
+            <option value="megaphone">Megaphone</option>
+            <option value="underwater">Underwater</option>
+            <option value="room">Big room</option>
+            <option value="vocoder">Vocoder</option>
+          </select>
+        </label>
         <div class="controls-grid">
           <label class="control-row" for="pitch-control">
             <span class="control-name">Pitch <small>SEMITONES</small></span>
@@ -121,6 +149,26 @@
             <input id="distortion-control" type="range" min="0" max="100" step="1" value="0">
             <output id="distortion-value" for="distortion-control">0%</output>
           </label>
+          <label class="control-row" for="boost-control">
+            <span class="control-name">Sound boost <small>MAX 200%</small></span>
+            <input id="boost-control" type="range" min="50" max="200" step="1" value="100">
+            <output id="boost-value" for="boost-control">100%</output>
+          </label>
+          <label class="control-row" for="loudness-control">
+            <span class="control-name">Loudness <small>COMPRESSION</small></span>
+            <input id="loudness-control" type="range" min="0" max="100" step="1" value="0">
+            <output id="loudness-value" for="loudness-control">0%</output>
+          </label>
+          <label class="control-row" for="crispiness-control">
+            <span class="control-name">Crispiness <small>PRESENCE</small></span>
+            <input id="crispiness-control" type="range" min="0" max="100" step="1" value="0">
+            <output id="crispiness-value" for="crispiness-control">0%</output>
+          </label>
+          <label class="control-row" for="vocoder-control">
+            <span class="control-name">Vocoder <small>SYNTH BLEND</small></span>
+            <input id="vocoder-control" type="range" min="0" max="100" step="1" value="0">
+            <output id="vocoder-value" for="vocoder-control">0%</output>
+          </label>
         </div>
       </section>
 
@@ -129,7 +177,7 @@
         <span>Windows 11 · Virtual audio cable required for calls</span>
       </footer>
     </main>
-    <audio id="call-audio" autoplay></audio>
-    <audio id="monitor-audio" autoplay></audio>
+    <audio id="call-audio"></audio>
+    <audio id="monitor-audio"></audio>
   </body>
 </html>

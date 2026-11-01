@@ -1,0 +1,39 @@
+{
+  "name": "voicechanger",
+  "version": "1.0.0",
+  "description": "Realtime microphone voice changer for Windows calls",
+  "type": "module",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist:win": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.voicechanger.desktop",
+    "productName": "VoiceChanger",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "VoiceChanger-${version}-portable.${ext}"
+    }
+  }
+}

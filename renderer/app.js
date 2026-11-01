@@ -6,6 +6,11 @@ const elements = {
   stop: document.querySelector('#stop-button'),
   monitor: document.querySelector('#monitor-button'),
   monitorLabel: document.querySelector('#monitor-label'),
+  talkMode: document.querySelector('#talk-mode'),
+  talkButton: document.querySelector('#talk-button'),
+  talkLabel: document.querySelector('#talk-button-label'),
+  talkHelp: document.querySelector('#talk-help'),
+  template: document.querySelector('#template-select'),
   callAudio: document.querySelector('#call-audio'),
   monitorAudio: document.querySelector('#monitor-audio'),
   status: document.querySelector('#status-label'),
@@ -16,9 +21,9 @@ const elements = {
   reset: document.querySelector('#reset-button')
 };
 
-const sliderIds = ['pitch', 'gain', 'gate', 'bass', 'treble', 'echo', 'reverb', 'distortion'];
+const sliderIds = ['pitch', 'gain', 'gate', 'bass', 'treble', 'echo', 'reverb', 'distortion', 'boost', 'loudness', 'crispiness', 'vocoder'];
 const sliders = Object.fromEntries(sliderIds.map((id) => [id, document.querySelector(`#${id}-control`)]));
-const defaults = { pitch: 0, gain: 100, gate: -60, bass: 0, treble: 0, echo: 0, reverb: 0, distortion: 0 };
+const defaults = { pitch: 0, gain: 100, gate: -60, bass: 0, treble: 0, echo: 0, reverb: 0, distortion: 0, boost: 100, loudness: 0, crispiness: 0, vocoder: 0 };
 const readouts = {
   pitch: (value) => `${value} st`,
   gain: (value) => `${value}%`,
@@ -27,7 +32,21 @@ const readouts = {
   treble: (value) => `${value} dB`,
   echo: (value) => `${value}%`,
   reverb: (value) => `${value}%`,
-  distortion: (value) => `${value}%`
+  distortion: (value) => `${value}%`,
+  boost: (value) => `${value}%`,
+  loudness: (value) => `${value}%`,
+  crispiness: (value) => `${value}%`,
+  vocoder: (value) => `${value}%`
+};
+const templates = {
+  custom: { settings: {}, highPass: 30, lowPass: 18000 },
+  radio: { settings: { gate: -55, bass: -5, treble: 2, distortion: 10, boost: 115, loudness: 55, crispiness: 30 }, highPass: 350, lowPass: 3200 },
+  walkie: { settings: { pitch: -1, gate: -50, bass: -8, treble: 1, distortion: 16, boost: 125, loudness: 68, crispiness: 35 }, highPass: 500, lowPass: 2800 },
+  loud: { settings: { treble: 2, boost: 200, loudness: 100, crispiness: 10 }, highPass: 30, lowPass: 18000 },
+  megaphone: { settings: { bass: -6, treble: 3, distortion: 30, boost: 140, loudness: 75, crispiness: 25 }, highPass: 280, lowPass: 3600 },
+  underwater: { settings: { bass: 5, treble: -10, echo: 8, reverb: 25, loudness: 35 }, highPass: 70, lowPass: 750 },
+  room: { settings: { echo: 15, reverb: 85, loudness: 35 }, highPass: 30, lowPass: 16000 },
+  vocoder: { settings: { vocoder: 100, boost: 120, loudness: 45 }, highPass: 30, lowPass: 18000 }
 };
 
 let microphoneStream;
@@ -37,8 +56,17 @@ let pitchNode;
 let inputGain;
 let bassFilter;
 let trebleFilter;
+let crispinessFilter;
+let presetHighPass;
+let presetLowPass;
 let shaper;
 let compressor;
+let loudnessCompressor;
+let makeupGain;
+let boostGain;
+let limiter;
+let safetyClipper;
+let transmitGain;
 let echoSend;
 let echoDelay;
 let echoFeedback;
@@ -49,6 +77,7 @@ let masterGain;
 let analyser;
 let animationFrame;
 let monitoring = false;
+let transmitting = false;
 
 function updateStatus(label, live = false) {
   elements.status.textContent = label;
@@ -81,6 +110,44 @@ function updateControls() {
   echoSend.gain.setTargetAtTime(Number(sliders.echo.value) / 100 * 0.32, now, 0.03);
   reverbSend.gain.setTargetAtTime(Number(sliders.reverb.value) / 100 * 0.38, now, 0.03);
   shaper.curve = makeDistortionCurve(Number(sliders.distortion.value));
+  crispinessFilter.gain.setTargetAtTime(Number(sliders.crispiness.value) / 100 * 9, now, 0.03);
+  loudnessCompressor.threshold.setTargetAtTime(-6 - Number(sliders.loudness.value) * 0.2, now, 0.03);
+  loudnessCompressor.ratio.setTargetAtTime(1 + Number(sliders.loudness.value) * 0.09, now, 0.03);
+  makeupGain.gain.setTargetAtTime(1 + Number(sliders.loudness.value) / 100 * 0.45, now, 0.03);
+  boostGain.gain.setTargetAtTime(Number(sliders.boost.value) / 100, now, 0.03);
+  pitchNode.parameters.get('vocoder').setTargetAtTime(Number(sliders.vocoder.value), now, 0.03);
+  const template = templates[elements.template.value] || templates.custom;
+  presetHighPass.frequency.setTargetAtTime(template.highPass, now, 0.03);
+  presetLowPass.frequency.setTargetAtTime(template.lowPass, now, 0.03);
+}
+
+function applyTemplate(name) {
+  const template = templates[name] || templates.custom;
+  for (const [id, value] of Object.entries({ ...defaults, ...template.settings })) setControlValue(id, value);
+  elements.template.value = name;
+  updateControls();
+}
+
+function updateTalkButton() {
+  const pushToTalk = elements.talkMode.value === 'ptt';
+  elements.talkButton.classList.toggle('is-transmitting', transmitting);
+  elements.talkButton.setAttribute('aria-pressed', String(transmitting));
+  elements.talkLabel.textContent = !audioContext
+    ? 'Start voice first'
+    : pushToTalk
+      ? transmitting ? 'Talking · release to mute' : 'Hold to talk'
+      : transmitting ? 'Voice on · click to mute' : 'Voice muted · click to talk';
+  elements.talkHelp.textContent = pushToTalk
+    ? 'Audio is sent only while this button is held.'
+    : 'Click once to talk; click again to mute your call audio.';
+}
+
+function setTransmitting(enabled) {
+  transmitting = Boolean(enabled && audioContext && transmitGain);
+  if (transmitGain && audioContext) {
+    transmitGain.gain.setTargetAtTime(transmitting ? 1 : 0, audioContext.currentTime, 0.008);
+  }
+  updateTalkButton();
 }
 
 function makeDistortionCurve(amount) {
@@ -92,6 +159,15 @@ function makeDistortionCurve(amount) {
   for (let index = 0; index < samples; index += 1) {
     const input = index * 2 / (samples - 1) - 1;
     curve[index] = Math.tanh(input * drive) / normalizer;
+  }
+  return curve;
+}
+
+function makeSafetyCurve() {
+  const curve = new Float32Array(2048);
+  for (let index = 0; index < curve.length; index += 1) {
+    const sample = index * 2 / (curve.length - 1) - 1;
+    curve[index] = Math.max(-0.96, Math.min(0.96, sample));
   }
   return curve;
 }
@@ -198,6 +274,18 @@ async function startVoice() {
     trebleFilter = audioContext.createBiquadFilter();
     trebleFilter.type = 'highshelf';
     trebleFilter.frequency.value = 4200;
+    presetHighPass = audioContext.createBiquadFilter();
+    presetHighPass.type = 'highpass';
+    presetHighPass.frequency.value = 30;
+    presetHighPass.Q.value = 0.7;
+    presetLowPass = audioContext.createBiquadFilter();
+    presetLowPass.type = 'lowpass';
+    presetLowPass.frequency.value = 18000;
+    presetLowPass.Q.value = 0.7;
+    crispinessFilter = audioContext.createBiquadFilter();
+    crispinessFilter.type = 'peaking';
+    crispinessFilter.frequency.value = 3200;
+    crispinessFilter.Q.value = 0.85;
     shaper = audioContext.createWaveShaper();
     shaper.oversample = '4x';
     compressor = audioContext.createDynamicsCompressor();
@@ -206,6 +294,23 @@ async function startVoice() {
     compressor.ratio.value = 3;
     compressor.attack.value = 0.004;
     compressor.release.value = 0.16;
+    loudnessCompressor = audioContext.createDynamicsCompressor();
+    loudnessCompressor.knee.value = 12;
+    loudnessCompressor.attack.value = 0.006;
+    loudnessCompressor.release.value = 0.14;
+    makeupGain = audioContext.createGain();
+    boostGain = audioContext.createGain();
+    limiter = audioContext.createDynamicsCompressor();
+    limiter.threshold.value = -1;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.12;
+    safetyClipper = audioContext.createWaveShaper();
+    safetyClipper.curve = makeSafetyCurve();
+    safetyClipper.oversample = '4x';
+    transmitGain = audioContext.createGain();
+    transmitGain.gain.value = 0;
 
     echoSend = audioContext.createGain();
     echoDelay = audioContext.createDelay(1);
@@ -228,7 +333,10 @@ async function startVoice() {
     inputGain.connect(pitchNode);
     pitchNode.connect(bassFilter);
     bassFilter.connect(trebleFilter);
-    trebleFilter.connect(shaper);
+    trebleFilter.connect(presetHighPass);
+    presetHighPass.connect(presetLowPass);
+    presetLowPass.connect(crispinessFilter);
+    crispinessFilter.connect(shaper);
     shaper.connect(compressor);
     compressor.connect(masterGain);
     compressor.connect(echoSend);
@@ -243,10 +351,18 @@ async function startVoice() {
     reverbReturn.connect(masterGain);
     compressor.connect(analyser);
 
-    const output = audioContext.createMediaStreamDestination();
-    masterGain.connect(output);
-    elements.callAudio.srcObject = output.stream;
-    elements.monitorAudio.srcObject = output.stream;
+    const monitorDestination = audioContext.createMediaStreamDestination();
+    const callDestination = audioContext.createMediaStreamDestination();
+    masterGain.connect(loudnessCompressor);
+    loudnessCompressor.connect(makeupGain);
+    makeupGain.connect(boostGain);
+    boostGain.connect(limiter);
+    limiter.connect(safetyClipper);
+    safetyClipper.connect(monitorDestination);
+    safetyClipper.connect(transmitGain);
+    transmitGain.connect(callDestination);
+    elements.callAudio.srcObject = callDestination.stream;
+    elements.monitorAudio.srcObject = monitorDestination.stream;
     await setAudioSink(elements.callAudio, elements.output.value);
     await elements.callAudio.play();
     updateControls();
@@ -254,6 +370,8 @@ async function startVoice() {
     elements.start.hidden = true;
     elements.stop.disabled = false;
     elements.monitor.disabled = false;
+    elements.talkButton.disabled = false;
+    setTransmitting(false);
     updateStatus('Live', true);
     await refreshDevices();
     beginMeter();
@@ -286,6 +404,7 @@ function beginMeter() {
 
 async function stopVoice() {
   cancelAnimationFrame(animationFrame);
+  setTransmitting(false);
   microphoneStream?.getTracks().forEach((track) => track.stop());
   elements.callAudio.pause();
   elements.monitorAudio.pause();
@@ -300,6 +419,7 @@ async function stopVoice() {
   elements.start.hidden = false;
   elements.stop.disabled = true;
   elements.monitor.disabled = true;
+  elements.talkButton.disabled = true;
   elements.meter.style.transform = 'scaleX(0)';
   updateStatus('Ready');
 }
@@ -325,13 +445,53 @@ async function toggleMonitor() {
   }
 }
 
-for (const id of sliderIds) sliders[id].addEventListener('input', updateControls);
+for (const id of sliderIds) {
+  sliders[id].addEventListener('input', () => {
+    elements.template.value = 'custom';
+    updateControls();
+  });
+}
 elements.start.addEventListener('click', startVoice);
 elements.stop.addEventListener('click', stopVoice);
 elements.monitor.addEventListener('click', toggleMonitor);
+elements.template.addEventListener('change', () => applyTemplate(elements.template.value));
+elements.talkMode.addEventListener('change', () => {
+  setTransmitting(false);
+  updateTalkButton();
+});
+elements.talkButton.addEventListener('click', () => {
+  if (elements.talkMode.value === 'toggle' && audioContext) setTransmitting(!transmitting);
+});
+elements.talkButton.addEventListener('pointerdown', (event) => {
+  if (elements.talkMode.value !== 'ptt' || !audioContext || !event.isPrimary) return;
+  event.preventDefault();
+  elements.talkButton.setPointerCapture(event.pointerId);
+  setTransmitting(true);
+});
+elements.talkButton.addEventListener('pointerup', () => {
+  if (elements.talkMode.value === 'ptt') setTransmitting(false);
+});
+elements.talkButton.addEventListener('pointercancel', () => setTransmitting(false));
+elements.talkButton.addEventListener('lostpointercapture', () => {
+  if (elements.talkMode.value === 'ptt') setTransmitting(false);
+});
+elements.talkButton.addEventListener('keydown', (event) => {
+  if (elements.talkMode.value === 'ptt' && [' ', 'Enter'].includes(event.key)) {
+    event.preventDefault();
+    if (!event.repeat) setTransmitting(true);
+  }
+});
+elements.talkButton.addEventListener('keyup', (event) => {
+  if (elements.talkMode.value === 'ptt' && [' ', 'Enter'].includes(event.key)) {
+    event.preventDefault();
+    setTransmitting(false);
+  }
+});
+window.addEventListener('blur', () => {
+  if (elements.talkMode.value === 'ptt') setTransmitting(false);
+});
 elements.reset.addEventListener('click', () => {
-  for (const [id, value] of Object.entries(defaults)) setControlValue(id, value);
-  updateControls();
+  applyTemplate('custom');
 });
 elements.output.addEventListener('change', async () => {
   updateRouteNote();
@@ -355,4 +515,5 @@ elements.monitorOutput.addEventListener('change', async () => {
 navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
 
 for (const [id, value] of Object.entries(defaults)) setControlValue(id, value);
+updateTalkButton();
 refreshDevices().catch(() => {});

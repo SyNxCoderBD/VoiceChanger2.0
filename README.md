@@ -32,9 +32,12 @@ To run the app during development, use `npm start`.
 3. Choose **CABLE Input (VB-Audio Virtual Cable)** under **Send processed voice to**.
 4. Choose your headphones under **Headphones / monitor**.
 5. Press **Start voice**. Speak and check that the input meter moves.
-6. In the call app, select **CABLE Output (VB-Audio Virtual Cable)** as the microphone. Keep the call app's speaker/output device set to your headphones.
-7. Press **Hear myself** to monitor the processed voice in your headphones. Leave it off if you do not need monitoring.
-8. Adjust pitch, gain, noise gate, bass, treble, echo, reverb, and distortion while speaking.
+6. Choose **Click to toggle** or **Push to talk (hold)** under **Voice activation**. Click the talk button to switch transmission on/off, or hold it while speaking in push-to-talk mode. The stream starts muted.
+7. In the call app, select **CABLE Output (VB-Audio Virtual Cable)** as the microphone. Keep the call app's speaker/output device set to your headphones.
+8. Press **Hear myself** to monitor the processed voice in your headphones. Monitoring remains available while call transmission is muted.
+9. Adjust pitch, gain, noise gate, bass, treble, echo, reverb, distortion, sound boost, loudness, crispiness, and vocoder while speaking.
+
+Choose a template for **Radio**, **Walkie-talkie**, **Very loud**, **Megaphone**, **Underwater**, **Big room**, or **Vocoder**; changing a slider switches the selector back to manual settings. Sound boost is capped at **200% (+6 dB)** and a digital peak limiter is applied. This is a relative digital gain setting, not a 200 dB sound-pressure level.
 
 Use headphones when monitoring to prevent speaker audio from feeding back into the microphone. If the cable devices are missing, reinstall the virtual cable and restart Windows. If the call app cannot hear you, confirm it uses **CABLE Output** as its microphone and VoiceChanger sends to **CABLE Input**.
 
@@ -46,5 +49,9 @@ Use headphones when monitoring to prevent speaker audio from feeding back into t
 - **Bass / Treble:** low- and high-shelf EQ
 - **Echo / Reverb:** adjustable time-based effects
 - **Distortion:** adjustable saturation
+- **Sound boost:** 50-200% output gain with a peak limiter
+- **Loudness:** adjustable dynamic compression
+- **Crispiness:** presence EQ
+- **Vocoder:** adjustable synthesized-carrier voice blend
 
 Microphone audio is processed locally and is not uploaded.

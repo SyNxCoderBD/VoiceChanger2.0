@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { RealtimePitchShifter } from '../renderer/audio/realtime-pitch-shifter.js';
+import { RealtimeVocoder } from '../renderer/audio/vocoder.js';
 
 function renderSine(pitchSemitones) {
   const sampleRate = 48000;
@@ -52,4 +53,31 @@ test('stereo processing stays finite when given silence', () => {
   shifter.processBlock([silence, silence], [left, right]);
 
   assert.ok([...left, ...right].every(Number.isFinite));
+});
+
+test('vocoder at zero amount leaves the signal unchanged', () => {
+  const vocoder = new RealtimeVocoder(48000);
+  const left = Float32Array.from([0.1, -0.2, 0.3, -0.4]);
+  const original = [...left];
+
+  vocoder.processBlock([left], 0);
+
+  assert.deepEqual([...left], original);
+});
+
+test('active vocoder changes the signal without producing non-finite samples', () => {
+  const vocoder = new RealtimeVocoder(48000);
+  const left = new Float32Array(4096);
+  const right = new Float32Array(4096);
+  for (let index = 0; index < left.length; index += 1) {
+    left[index] = Math.sin(2 * Math.PI * 220 * index / 48000) * 0.5;
+    right[index] = left[index];
+  }
+
+  vocoder.processBlock([left, right], 100);
+
+  assert.ok([...left, ...right].every(Number.isFinite));
+  assert.ok(left.some((sample, index) => Math.abs(sample - right[index]) > 0) === false);
+  assert.notDeepEqual([...left.slice(100)], Array.from({ length: left.length - 100 }, (_, index) =>
+    Math.sin(2 * Math.PI * 220 * (index + 100) / 48000) * 0.5));
 });
