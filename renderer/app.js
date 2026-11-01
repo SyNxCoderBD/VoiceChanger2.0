@@ -1,3 +1,5 @@
+import { DEFAULT_HOTKEY, formatHotkey, hotkeyFromEvent, matchesHotkey } from './hotkeys.js';
+
 const elements = {
   microphone: document.querySelector('#microphone-select'),
   output: document.querySelector('#output-select'),
@@ -10,6 +12,8 @@ const elements = {
   talkButton: document.querySelector('#talk-button'),
   talkLabel: document.querySelector('#talk-button-label'),
   talkHelp: document.querySelector('#talk-help'),
+  hotkeyButton: document.querySelector('#hotkey-button'),
+  hotkeyLabel: document.querySelector('#hotkey-label'),
   template: document.querySelector('#template-select'),
   callAudio: document.querySelector('#call-audio'),
   monitorAudio: document.querySelector('#monitor-audio'),
@@ -78,6 +82,27 @@ let analyser;
 let animationFrame;
 let monitoring = false;
 let transmitting = false;
+let hotkeyHeld = false;
+let capturingHotkey = false;
+let activeMicrophoneId = 'default';
+
+function loadHotkey() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('voicechanger.talkHotkey'));
+    if (typeof saved?.key === 'string' && saved.key.length > 0) {
+      return {
+        key: saved.key,
+        alt: Boolean(saved.alt),
+        ctrl: Boolean(saved.ctrl),
+        shift: Boolean(saved.shift),
+        meta: Boolean(saved.meta)
+      };
+    }
+  } catch {}
+  return { ...DEFAULT_HOTKEY };
+}
+
+let talkHotkey = loadHotkey();
 
 function updateStatus(label, live = false) {
   elements.status.textContent = label;
@@ -140,6 +165,33 @@ function updateTalkButton() {
   elements.talkHelp.textContent = pushToTalk
     ? 'Audio is sent only while this button is held.'
     : 'Click once to talk; click again to mute your call audio.';
+}
+
+function updateHotkeyButton() {
+  elements.hotkeyLabel.textContent = capturingHotkey ? 'Press shortcut' : formatHotkey(talkHotkey);
+  elements.hotkeyButton.classList.toggle('is-capturing', capturingHotkey);
+  elements.hotkeyButton.querySelector('.hotkey-action').textContent = capturingHotkey ? 'Esc to cancel' : 'Change';
+}
+
+function captureHotkey(event) {
+  if (!capturingHotkey) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.key === 'Escape') {
+    capturingHotkey = false;
+    updateHotkeyButton();
+    return true;
+  }
+
+  const nextHotkey = hotkeyFromEvent(event);
+  if (!nextHotkey) return true;
+  talkHotkey = nextHotkey;
+  try {
+    localStorage.setItem('voicechanger.talkHotkey', JSON.stringify(talkHotkey));
+  } catch {}
+  capturingHotkey = false;
+  updateHotkeyButton();
+  return true;
 }
 
 function setTransmitting(enabled) {
@@ -240,6 +292,41 @@ async function setAudioSink(audioElement, deviceId) {
   await audioElement.setSinkId(deviceId || 'default');
 }
 
+async function switchMicrophone() {
+  if (!audioContext || !inputGain) return;
+  const requestedDeviceId = elements.microphone.value || 'default';
+  if (requestedDeviceId === activeMicrophoneId) return;
+
+  let replacementStream;
+  try {
+    const constraints = {
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      },
+      video: false
+    };
+    if (requestedDeviceId !== 'default') constraints.audio.deviceId = { exact: requestedDeviceId };
+    replacementStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const replacementSource = audioContext.createMediaStreamSource(replacementStream);
+    replacementSource.connect(inputGain);
+
+    const previousSource = source;
+    const previousStream = microphoneStream;
+    source = replacementSource;
+    microphoneStream = replacementStream;
+    activeMicrophoneId = requestedDeviceId;
+    previousSource?.disconnect();
+    previousStream?.getTracks().forEach((track) => track.stop());
+    showError('');
+  } catch (error) {
+    replacementStream?.getTracks().forEach((track) => track.stop());
+    elements.microphone.value = activeMicrophoneId;
+    showError(error.message || 'Could not switch microphone. The previous microphone is still active.');
+  }
+}
+
 async function startVoice() {
   elements.start.disabled = true;
   showError('');
@@ -255,6 +342,7 @@ async function startVoice() {
       audioConstraints.deviceId = { exact: elements.microphone.value };
     }
     microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints, video: false });
+    activeMicrophoneId = elements.microphone.value || 'default';
     await refreshDevices();
 
     audioContext = new AudioContext({ latencyHint: 'interactive' });
@@ -435,6 +523,7 @@ async function toggleMonitor() {
   }
 
   try {
+    if (audioContext.state === 'suspended') await audioContext.resume();
     await setAudioSink(elements.monitorAudio, elements.monitorOutput.value);
     elements.monitorAudio.volume = 0.85;
     await elements.monitorAudio.play();
@@ -456,8 +545,13 @@ elements.stop.addEventListener('click', stopVoice);
 elements.monitor.addEventListener('click', toggleMonitor);
 elements.template.addEventListener('change', () => applyTemplate(elements.template.value));
 elements.talkMode.addEventListener('change', () => {
+  hotkeyHeld = false;
   setTransmitting(false);
   updateTalkButton();
+});
+elements.hotkeyButton.addEventListener('click', () => {
+  capturingHotkey = true;
+  updateHotkeyButton();
 });
 elements.talkButton.addEventListener('click', () => {
   if (elements.talkMode.value === 'toggle' && audioContext) setTransmitting(!transmitting);
@@ -488,7 +582,27 @@ elements.talkButton.addEventListener('keyup', (event) => {
   }
 });
 window.addEventListener('blur', () => {
+  hotkeyHeld = false;
   if (elements.talkMode.value === 'ptt') setTransmitting(false);
+});
+window.addEventListener('keydown', (event) => {
+  if (captureHotkey(event) || event.isComposing || !matchesHotkey(event, talkHotkey)) return;
+  event.preventDefault();
+  if (elements.talkMode.value === 'ptt') {
+    if (!hotkeyHeld && !event.repeat) {
+      hotkeyHeld = true;
+      setTransmitting(true);
+    }
+  } else if (!event.repeat) {
+    setTransmitting(!transmitting);
+  }
+});
+window.addEventListener('keyup', (event) => {
+  const released = hotkeyFromEvent(event);
+  if (elements.talkMode.value === 'ptt' && hotkeyHeld && released?.key === talkHotkey.key) {
+    hotkeyHeld = false;
+    setTransmitting(false);
+  }
 });
 elements.reset.addEventListener('click', () => {
   applyTemplate('custom');
@@ -512,8 +626,10 @@ elements.monitorOutput.addEventListener('change', async () => {
     }
   }
 });
+elements.microphone.addEventListener('change', switchMicrophone);
 navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
 
 for (const [id, value] of Object.entries(defaults)) setControlValue(id, value);
 updateTalkButton();
+updateHotkeyButton();
 refreshDevices().catch(() => {});

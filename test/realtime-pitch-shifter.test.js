@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { RealtimePitchShifter } from '../renderer/audio/realtime-pitch-shifter.js';
 import { RealtimeVocoder } from '../renderer/audio/vocoder.js';
+import { DEFAULT_HOTKEY, formatHotkey, hotkeyFromEvent, matchesHotkey } from '../renderer/hotkeys.js';
 
 function renderSine(pitchSemitones) {
   const sampleRate = 48000;
@@ -80,4 +81,17 @@ test('active vocoder changes the signal without producing non-finite samples', (
   assert.ok(left.some((sample, index) => Math.abs(sample - right[index]) > 0) === false);
   assert.notDeepEqual([...left.slice(100)], Array.from({ length: left.length - 100 }, (_, index) =>
     Math.sin(2 * Math.PI * 220 * (index + 100) / 48000) * 0.5));
+});
+
+test('default hotkey is Alt+V and matches only the exact chord', () => {
+  assert.equal(formatHotkey(DEFAULT_HOTKEY), 'Alt+V');
+  assert.equal(matchesHotkey({ key: 'V', altKey: true, ctrlKey: false, shiftKey: false, metaKey: false }, DEFAULT_HOTKEY), true);
+  assert.equal(matchesHotkey({ key: 'v', altKey: false, ctrlKey: false, shiftKey: false, metaKey: false }, DEFAULT_HOTKEY), false);
+});
+
+test('hotkey capture normalizes keys and ignores bare modifiers', () => {
+  assert.deepEqual(hotkeyFromEvent({ key: 'F8', altKey: false, ctrlKey: true, shiftKey: false, metaKey: false }), {
+    key: 'F8', alt: false, ctrl: true, shift: false, meta: false
+  });
+  assert.equal(hotkeyFromEvent({ key: 'Alt', altKey: true, ctrlKey: false, shiftKey: false, metaKey: false }), null);
 });

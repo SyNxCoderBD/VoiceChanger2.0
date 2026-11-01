@@ -62,12 +62,16 @@ h2 { margin: 0; font-size: 18px; font-weight: 700; }
 .button-stop { border-color: #d7dfda; background: #fff; color: #53615e; }
 .button-stop:hover:not(:disabled), .button-quiet:hover { background: #f2f5f3; }
 .button-quiet { min-height: 32px; border-color: var(--line); background: white; color: #53615e; }
-.transmit-bar { display: grid; grid-template-columns: minmax(180px, 0.85fr) minmax(220px, 1fr) minmax(170px, 1.2fr); align-items: end; gap: 12px; margin-top: 15px; padding: 13px 0; border-top: 1px solid #edf0ed; }
+.transmit-bar { display: grid; grid-template-columns: minmax(160px, 0.85fr) minmax(190px, 1fr) minmax(150px, 1.1fr) minmax(130px, 0.75fr); align-items: end; gap: 12px; margin-top: 15px; padding: 13px 0; border-top: 1px solid #edf0ed; }
 .talk-button { display: flex; min-height: 42px; align-items: center; justify-content: center; gap: 10px; padding: 0 14px; border: 1px solid #d7dfda; border-radius: 5px; background: #f4f6f5; color: #485755; cursor: pointer; font-size: 12px; font-weight: 750; }
 .talk-button.is-transmitting { border-color: #9dcbb5; background: var(--mint); color: var(--green-dark); }
 .talk-light { width: 9px; height: 9px; border-radius: 50%; background: #9ba8a2; }
 .talk-button.is-transmitting .talk-light { background: #17966b; box-shadow: 0 0 0 4px #cceadd; }
 .talk-help { align-self: center; padding-bottom: 2px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.hotkey-field { display: flex; min-width: 0; flex-direction: column; gap: 6px; color: #485755; font-size: 11px; font-weight: 700; }
+.hotkey-button { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 8px; padding: 0 10px; border: 1px solid #d5ded8; border-radius: 5px; background: #fbfcfb; color: var(--ink); cursor: pointer; font-size: 12px; font-weight: 700; }
+.hotkey-button:hover, .hotkey-button.is-capturing { border-color: var(--green); background: var(--mint); }
+.hotkey-action { color: var(--muted); font-size: 10px; font-weight: 600; }
 .route-note { display: flex; align-items: flex-start; gap: 9px; margin-top: 3px; padding: 11px 12px; border: 1px solid #efd6b8; border-radius: 5px; background: #fff8ef; color: #75562f; font-size: 11px; line-height: 1.5; }
 .route-note strong { color: #533d22; }
 .route-note.route-ready { border-color: #bfdfcf; background: #f0faf4; color: #31614c; }

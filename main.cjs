@@ -1,4 +1,4 @@
-const { app, BrowserWindow, protocol, session } = require('electron');
+const { app, BrowserWindow, Menu, protocol, session } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
@@ -42,6 +42,7 @@ function createWindow() {
     backgroundColor: '#f3f5f2',
     title: 'VoiceChanger',
     icon: path.join(__dirname, 'assets/icon.ico'),
+    autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -57,6 +58,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   protocol.handle('voicechanger', serveRenderer);
   session.defaultSession.setPermissionCheckHandler((_contents, permission) => {
     return permission === 'media' || permission === 'speaker-selection';
