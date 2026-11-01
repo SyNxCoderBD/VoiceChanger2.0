@@ -41,6 +41,7 @@ function createWindow() {
     minHeight: 640,
     backgroundColor: '#f3f5f2',
     title: 'VoiceChanger',
+    icon: path.join(__dirname, 'assets/icon.ico'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

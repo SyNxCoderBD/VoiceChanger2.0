@@ -7,7 +7,7 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "dist:win": "electron-builder --win portable --x64"
+    "dist:win": "node scripts/dist-win.mjs"
   },
   "devDependencies": {
     "electron": "^38.0.0",
@@ -22,9 +22,11 @@
     "files": [
       "main.cjs",
       "renderer/**/*",
+      "assets/icon.ico",
       "package.json"
     ],
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         {
           "target": "portable",
