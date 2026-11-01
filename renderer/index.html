@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; media-src 'self' blob:">
+    <title>VoiceChanger</title>
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <div>
+            <p class="eyebrow">LIVE AUDIO</p>
+            <h1>VoiceChanger</h1>
+          </div>
+        </div>
+        <div class="live-state" id="live-state" aria-live="polite">
+          <span class="state-light"></span>
+          <span id="status-label">Ready</span>
+        </div>
+      </header>
+
+      <section class="routing-panel" aria-labelledby="routing-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">01 / ROUTING</p>
+            <h2 id="routing-title">Audio path</h2>
+          </div>
+          <div class="level-meter" aria-label="Microphone input level">
+            <span class="meter-label">INPUT</span>
+            <div class="meter-track"><div class="meter-fill" id="meter-fill"></div></div>
+          </div>
+        </div>
+
+        <div class="device-grid">
+          <label class="device-field">
+            <span>Microphone in</span>
+            <select id="microphone-select"><option value="default">Default microphone</option></select>
+          </label>
+          <label class="device-field">
+            <span>Send processed voice to</span>
+            <select id="output-select"><option value="default">System default output</option></select>
+          </label>
+          <label class="device-field monitor-device-field">
+            <span>Headphones / monitor</span>
+            <select id="monitor-select"><option value="default">System default output</option></select>
+          </label>
+          <div class="action-field">
+            <button class="button button-primary" id="start-button" type="button">Start voice</button>
+            <button class="button button-stop" id="stop-button" type="button" disabled>Stop</button>
+          </div>
+        </div>
+
+        <div class="route-note" id="route-note" role="status">
+          <span class="route-note-mark" aria-hidden="true">!</span>
+          <span>For calls, send audio to <strong>CABLE Input</strong>, then select <strong>CABLE Output</strong> as your microphone in the call app.</span>
+        </div>
+        <div class="monitor-row">
+          <div>
+            <strong>Hear myself</strong>
+            <span>Monitor the processed voice through your headphones.</span>
+          </div>
+          <button class="monitor-toggle" id="monitor-button" type="button" aria-pressed="false" disabled>
+            <span class="toggle-track" aria-hidden="true"><span></span></span>
+            <span id="monitor-label">Off</span>
+          </button>
+        </div>
+        <p class="error-message" id="error-message" role="alert" hidden></p>
+      </section>
+
+      <section class="controls-panel" aria-labelledby="controls-title">
+        <div class="section-heading controls-heading">
+          <div>
+            <p class="eyebrow">02 / SOUND</p>
+            <h2 id="controls-title">Voice settings</h2>
+          </div>
+          <button class="button button-quiet" id="reset-button" type="button">Reset</button>
+        </div>
+        <div class="controls-grid">
+          <label class="control-row" for="pitch-control">
+            <span class="control-name">Pitch <small>SEMITONES</small></span>
+            <input id="pitch-control" type="range" min="-12" max="12" step="1" value="0">
+            <output id="pitch-value" for="pitch-control">0 st</output>
+          </label>
+          <label class="control-row" for="gain-control">
+            <span class="control-name">Input gain <small>LEVEL</small></span>
+            <input id="gain-control" type="range" min="0" max="200" step="1" value="100">
+            <output id="gain-value" for="gain-control">100%</output>
+          </label>
+          <label class="control-row" for="gate-control">
+            <span class="control-name">Noise gate <small>THRESHOLD</small></span>
+            <input id="gate-control" type="range" min="-80" max="-20" step="1" value="-60">
+            <output id="gate-value" for="gate-control">-60 dB</output>
+          </label>
+          <label class="control-row" for="bass-control">
+            <span class="control-name">Bass <small>LOW SHELF</small></span>
+            <input id="bass-control" type="range" min="-12" max="12" step="1" value="0">
+            <output id="bass-value" for="bass-control">0 dB</output>
+          </label>
+          <label class="control-row" for="treble-control">
+            <span class="control-name">Treble <small>HIGH SHELF</small></span>
+            <input id="treble-control" type="range" min="-12" max="12" step="1" value="0">
+            <output id="treble-value" for="treble-control">0 dB</output>
+          </label>
+          <label class="control-row" for="echo-control">
+            <span class="control-name">Echo <small>AMOUNT</small></span>
+            <input id="echo-control" type="range" min="0" max="100" step="1" value="0">
+            <output id="echo-value" for="echo-control">0%</output>
+          </label>
+          <label class="control-row" for="reverb-control">
+            <span class="control-name">Reverb <small>AMOUNT</small></span>
+            <input id="reverb-control" type="range" min="0" max="100" step="1" value="0">
+            <output id="reverb-value" for="reverb-control">0%</output>
+          </label>
+          <label class="control-row" for="distortion-control">
+            <span class="control-name">Distortion <small>DRIVE</small></span>
+            <input id="distortion-control" type="range" min="0" max="100" step="1" value="0">
+            <output id="distortion-value" for="distortion-control">0%</output>
+          </label>
+        </div>
+      </section>
+
+      <footer class="footer-line">
+        <span>Mic processing stays on this PC.</span>
+        <span>Windows 11 · Virtual audio cable required for calls</span>
+      </footer>
+    </main>
+    <audio id="call-audio" autoplay></audio>
+    <audio id="monitor-audio" autoplay></audio>
+  </body>
+</html>
