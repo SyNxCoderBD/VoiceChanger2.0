@@ -58,8 +58,11 @@ function createWindow() {
 
 app.whenReady().then(() => {
   protocol.handle('voicechanger', serveRenderer);
+  session.defaultSession.setPermissionCheckHandler((_contents, permission) => {
+    return permission === 'media' || permission === 'speaker-selection';
+  });
   session.defaultSession.setPermissionRequestHandler((_contents, permission, callback) => {
-    callback(permission === 'media');
+    callback(permission === 'media' || permission === 'speaker-selection');
   });
   createWindow();
 

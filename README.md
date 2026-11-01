@@ -21,7 +21,7 @@ npm test
 npm run dist:win
 ```
 
-The build uses medium compression to keep the portable executable compact. The executable is written to `release/VoiceChanger-1.0.1-portable.exe`. Copy that file to the Windows 11 PC and run it; no app installer is needed. The virtual cable still needs to be installed separately on each PC.
+The build uses medium compression to keep the portable executable compact. The executable is written to `release/VoiceChanger-1.0.2-portable.exe`. Copy that file to the Windows 11 PC and run it; no app installer is needed. The virtual cable still needs to be installed separately on each PC.
 
 To run the app during development, use `npm start`.
 

@@ -20,16 +20,16 @@ function insideRoundedRect(x, y, left, top, width, height, radius) {
 
 function pixelColor(x, y, size) {
   const scale = size / 256;
-  if (!insideRoundedRect(x, y, 8 * scale, 8 * scale, 240 * scale, 240 * scale, 54 * scale)) return null;
+  if (!insideRoundedRect(x, y, 4 * scale, 4 * scale, 248 * scale, 248 * scale, 58 * scale)) return null;
   const bars = [
-    [40, 104, 18, 48, palette.light],
-    [84, 80, 18, 96, palette.light],
-    [119, 52, 18, 152, palette.accent],
-    [154, 80, 18, 96, palette.light],
-    [198, 104, 18, 48, palette.light]
+    [26, 86, 28, 84, palette.light],
+    [70, 58, 28, 140, palette.light],
+    [114, 30, 28, 196, palette.accent],
+    [158, 58, 28, 140, palette.light],
+    [202, 86, 28, 84, palette.light]
   ];
   for (const [left, top, width, height, color] of bars) {
-    if (insideRoundedRect(x, y, left * scale, top * scale, width * scale, height * scale, 9 * scale)) return color;
+    if (insideRoundedRect(x, y, left * scale, top * scale, width * scale, height * scale, 14 * scale)) return color;
   }
   return palette.background;
 }
