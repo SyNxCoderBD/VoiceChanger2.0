@@ -1,4 +1,4 @@
-import { DEFAULT_HOTKEY, formatHotkey, hotkeyFromEvent, matchesHotkey } from './hotkeys.js';
+import { DEFAULT_HOTKEY, formatHotkey, hotkeyFromEvent, matchesHotkey, toElectronAccelerator } from './hotkeys.js';
 
 const elements = {
   microphone: document.querySelector('#microphone-select'),
@@ -85,6 +85,7 @@ let transmitting = false;
 let hotkeyHeld = false;
 let capturingHotkey = false;
 let activeMicrophoneId = 'default';
+let globalHotkeyActive = false;
 
 function loadHotkey() {
   try {
@@ -163,8 +164,8 @@ function updateTalkButton() {
       ? transmitting ? 'Talking · release to mute' : 'Hold to talk'
       : transmitting ? 'Voice on · click to mute' : 'Voice muted · click to talk';
   elements.talkHelp.textContent = pushToTalk
-    ? 'Audio is sent only while this button is held.'
-    : 'Click once to talk; click again to mute your call audio.';
+    ? 'Hold the button or shortcut while VoiceChanger is focused.'
+    : `Click to talk, or press ${formatHotkey(talkHotkey)} anywhere to toggle.`;
 }
 
 function updateHotkeyButton() {
@@ -173,7 +174,22 @@ function updateHotkeyButton() {
   elements.hotkeyButton.querySelector('.hotkey-action').textContent = capturingHotkey ? 'Esc to cancel' : 'Change';
 }
 
-function captureHotkey(event) {
+async function syncGlobalHotkey() {
+  if (!window.voiceChangerHotkeys) return false;
+  const accelerator = elements.talkMode.value === 'toggle' ? toElectronAccelerator(talkHotkey) : null;
+  try {
+    const registered = await window.voiceChangerHotkeys.set(accelerator);
+    globalHotkeyActive = Boolean(registered && accelerator);
+    if (accelerator && !registered) showError(`${formatHotkey(talkHotkey)} is already in use. Choose another shortcut.`);
+    return registered;
+  } catch (error) {
+    globalHotkeyActive = false;
+    showError(error.message || 'Could not register the global talk shortcut.');
+    return false;
+  }
+}
+
+async function captureHotkey(event) {
   if (!capturingHotkey) return false;
   event.preventDefault();
   event.stopPropagation();
@@ -185,7 +201,15 @@ function captureHotkey(event) {
 
   const nextHotkey = hotkeyFromEvent(event);
   if (!nextHotkey) return true;
+  const previousHotkey = talkHotkey;
   talkHotkey = nextHotkey;
+  if (elements.talkMode.value === 'toggle' && window.voiceChangerHotkeys && !(await syncGlobalHotkey())) {
+    talkHotkey = previousHotkey;
+    await syncGlobalHotkey();
+    capturingHotkey = false;
+    updateHotkeyButton();
+    return true;
+  }
   try {
     localStorage.setItem('voicechanger.talkHotkey', JSON.stringify(talkHotkey));
   } catch {}
@@ -548,6 +572,7 @@ elements.talkMode.addEventListener('change', () => {
   hotkeyHeld = false;
   setTransmitting(false);
   updateTalkButton();
+  void syncGlobalHotkey();
 });
 elements.hotkeyButton.addEventListener('click', () => {
   capturingHotkey = true;
@@ -586,14 +611,18 @@ window.addEventListener('blur', () => {
   if (elements.talkMode.value === 'ptt') setTransmitting(false);
 });
 window.addEventListener('keydown', (event) => {
-  if (captureHotkey(event) || event.isComposing || !matchesHotkey(event, talkHotkey)) return;
+  if (capturingHotkey) {
+    void captureHotkey(event);
+    return;
+  }
+  if (event.isComposing || !matchesHotkey(event, talkHotkey)) return;
   event.preventDefault();
   if (elements.talkMode.value === 'ptt') {
     if (!hotkeyHeld && !event.repeat) {
       hotkeyHeld = true;
       setTransmitting(true);
     }
-  } else if (!event.repeat) {
+  } else if (!globalHotkeyActive && !event.repeat) {
     setTransmitting(!transmitting);
   }
 });
@@ -632,4 +661,8 @@ navigator.mediaDevices.addEventListener('devicechange', refreshDevices);
 for (const [id, value] of Object.entries(defaults)) setControlValue(id, value);
 updateTalkButton();
 updateHotkeyButton();
+window.voiceChangerHotkeys?.onPressed(() => {
+  if (elements.talkMode.value === 'toggle' && audioContext) setTransmitting(!transmitting);
+});
+void syncGlobalHotkey();
 refreshDevices().catch(() => {});

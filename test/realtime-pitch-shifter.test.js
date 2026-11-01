@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { RealtimePitchShifter } from '../renderer/audio/realtime-pitch-shifter.js';
 import { RealtimeVocoder } from '../renderer/audio/vocoder.js';
-import { DEFAULT_HOTKEY, formatHotkey, hotkeyFromEvent, matchesHotkey } from '../renderer/hotkeys.js';
+import { DEFAULT_HOTKEY, formatHotkey, hotkeyFromEvent, matchesHotkey, toElectronAccelerator } from '../renderer/hotkeys.js';
 
 function renderSine(pitchSemitones) {
   const sampleRate = 48000;
@@ -85,6 +85,7 @@ test('active vocoder changes the signal without producing non-finite samples', (
 
 test('default hotkey is Alt+V and matches only the exact chord', () => {
   assert.equal(formatHotkey(DEFAULT_HOTKEY), 'Alt+V');
+  assert.equal(toElectronAccelerator(DEFAULT_HOTKEY), 'Alt+V');
   assert.equal(matchesHotkey({ key: 'V', altKey: true, ctrlKey: false, shiftKey: false, metaKey: false }, DEFAULT_HOTKEY), true);
   assert.equal(matchesHotkey({ key: 'v', altKey: false, ctrlKey: false, shiftKey: false, metaKey: false }, DEFAULT_HOTKEY), false);
 });

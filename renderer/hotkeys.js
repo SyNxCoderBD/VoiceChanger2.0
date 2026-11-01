@@ -43,3 +43,14 @@ export function formatHotkey(hotkey) {
   const key = hotkey.key.length === 1 ? hotkey.key.toUpperCase() : hotkey.key;
   return [...modifiers, key].join('+');
 }
+
+export function toElectronAccelerator(hotkey) {
+  const modifiers = [];
+  if (hotkey.ctrl) modifiers.push('Ctrl');
+  if (hotkey.alt) modifiers.push('Alt');
+  if (hotkey.shift) modifiers.push('Shift');
+  if (hotkey.meta) modifiers.push('Super');
+  const keyNames = { ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', ArrowUp: 'Up' };
+  const key = keyNames[hotkey.key] || (hotkey.key.length === 1 ? hotkey.key.toUpperCase() : hotkey.key);
+  return [...modifiers, key].join('+');
+}

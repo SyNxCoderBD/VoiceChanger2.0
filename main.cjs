@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Menu, protocol, session } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, Menu, protocol, session } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
@@ -7,6 +7,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 const rendererRoot = path.resolve(__dirname, 'renderer');
+let registeredHotkey = '';
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -44,6 +45,7 @@ function createWindow() {
     icon: path.join(__dirname, 'assets/icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -57,9 +59,34 @@ function createWindow() {
   window.loadURL('voicechanger://ui/index.html');
 }
 
+function sendHotkeyPressed() {
+  const window = BrowserWindow.getAllWindows()[0];
+  if (window && !window.webContents.isDestroyed()) window.webContents.send('voicechanger:hotkey-pressed');
+}
+
+function registerHotkey(accelerator) {
+  if (registeredHotkey) globalShortcut.unregister(registeredHotkey);
+  registeredHotkey = '';
+  if (!accelerator) return true;
+
+  try {
+    if (globalShortcut.register(accelerator, sendHotkeyPressed)) {
+      registeredHotkey = accelerator;
+      return true;
+    }
+  } catch {}
+
+  return false;
+}
+
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   protocol.handle('voicechanger', serveRenderer);
+  ipcMain.handle('voicechanger:set-hotkey', (event, accelerator) => {
+    if (!event.senderFrame?.url.startsWith('voicechanger://ui/')) return false;
+    if (accelerator !== null && (typeof accelerator !== 'string' || accelerator.length > 80)) return false;
+    return registerHotkey(accelerator);
+  });
   session.defaultSession.setPermissionCheckHandler((_contents, permission) => {
     return permission === 'media' || permission === 'speaker-selection';
   });
@@ -75,4 +102,8 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });

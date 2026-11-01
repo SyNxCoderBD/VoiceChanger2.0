@@ -21,7 +21,7 @@ npm test
 npm run dist:win
 ```
 
-The build uses medium compression to keep the portable executable compact. The executable is written to `release/VoiceChanger-1.0.3-portable.exe`. Copy that file to the Windows 11 PC and run it; no app installer is needed. The virtual cable still needs to be installed separately on each PC.
+The build uses medium compression to keep the portable executable compact. The executable is written to `release/VoiceChanger-1.0.4-portable.exe`. Copy that file to the Windows 11 PC and run it; no app installer is needed. The virtual cable still needs to be installed separately on each PC.
 
 To run the app during development, use `npm start`.
 
@@ -32,7 +32,7 @@ To run the app during development, use `npm start`.
 3. Choose **CABLE Input (VB-Audio Virtual Cable)** under **Send processed voice to**.
 4. Choose your headphones under **Headphones / monitor**.
 5. Press **Start voice**. Speak and check that the input meter moves.
-6. Choose **Click to toggle** or **Push to talk (hold)** under **Voice activation**. Click the talk button to switch transmission on/off, or hold it while speaking in push-to-talk mode. The stream starts muted. The keyboard shortcut defaults to **Alt+V**; click **Change** to assign another key/chord. In push-to-talk mode, hold the shortcut to transmit.
+6. Choose **Click to toggle** or **Push to talk (hold)** under **Voice activation**. Click the talk button to switch transmission on/off, or hold it while speaking in push-to-talk mode. The stream starts muted. The system-wide toggle shortcut defaults to **Alt+V**; click **Change** to assign another key/chord. In push-to-talk mode, hold the button or shortcut while VoiceChanger is focused.
 7. In the call app, select **CABLE Output (VB-Audio Virtual Cable)** as the microphone. Keep the call app's speaker/output device set to your headphones.
 8. Press **Hear myself** to monitor the processed voice in your headphones. Monitoring remains available while call transmission is muted.
 9. Adjust pitch, gain, noise gate, bass, treble, echo, reverb, distortion, sound boost, loudness, crispiness, and vocoder while speaking.
