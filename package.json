@@ -1,6 +1,6 @@
 {
   "name": "voicechanger",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Realtime microphone voice changer for Windows calls",
   "type": "module",
   "main": "main.cjs",

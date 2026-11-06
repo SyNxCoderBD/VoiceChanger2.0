@@ -226,6 +226,39 @@ function setTransmitting(enabled) {
   updateTalkButton();
 }
 
+function playToggleSound(enabled) {
+  if (!audioContext || audioContext.state === 'closed') return;
+  if (audioContext.state === 'suspended') void audioContext.resume().catch(() => {});
+
+  const frequencies = enabled ? [740, 988] : [494, 370];
+  const startTime = audioContext.currentTime;
+  frequencies.forEach((frequency, index) => {
+    const oscillator = audioContext.createOscillator();
+    const envelope = audioContext.createGain();
+    const noteStart = startTime + index * 0.085;
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, noteStart);
+    envelope.gain.setValueAtTime(0.0001, noteStart);
+    envelope.gain.exponentialRampToValueAtTime(0.12, noteStart + 0.008);
+    envelope.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.075);
+    oscillator.connect(envelope);
+    envelope.connect(audioContext.destination);
+    oscillator.addEventListener('ended', () => {
+      oscillator.disconnect();
+      envelope.disconnect();
+    }, { once: true });
+    oscillator.start(noteStart);
+    oscillator.stop(noteStart + 0.08);
+  });
+}
+
+function toggleTransmission() {
+  if (elements.talkMode.value !== 'toggle' || !audioContext) return;
+  const enabled = !transmitting;
+  setTransmitting(enabled);
+  playToggleSound(enabled);
+}
+
 function makeDistortionCurve(amount) {
   if (amount === 0) return null;
   const samples = 2048;
@@ -579,7 +612,7 @@ elements.hotkeyButton.addEventListener('click', () => {
   updateHotkeyButton();
 });
 elements.talkButton.addEventListener('click', () => {
-  if (elements.talkMode.value === 'toggle' && audioContext) setTransmitting(!transmitting);
+  toggleTransmission();
 });
 elements.talkButton.addEventListener('pointerdown', (event) => {
   if (elements.talkMode.value !== 'ptt' || !audioContext || !event.isPrimary) return;
@@ -623,7 +656,7 @@ window.addEventListener('keydown', (event) => {
       setTransmitting(true);
     }
   } else if (!globalHotkeyActive && !event.repeat) {
-    setTransmitting(!transmitting);
+    toggleTransmission();
   }
 });
 window.addEventListener('keyup', (event) => {
@@ -662,7 +695,7 @@ for (const [id, value] of Object.entries(defaults)) setControlValue(id, value);
 updateTalkButton();
 updateHotkeyButton();
 window.voiceChangerHotkeys?.onPressed(() => {
-  if (elements.talkMode.value === 'toggle' && audioContext) setTransmitting(!transmitting);
+  toggleTransmission();
 });
 void syncGlobalHotkey();
 refreshDevices().catch(() => {});
